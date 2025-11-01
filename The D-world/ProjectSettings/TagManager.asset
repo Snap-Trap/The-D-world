@@ -16,7 +16,7 @@ TagManager:
   - groundLayer
   - objectLayer
   - waterLayer
-  - 
+  - exclusionLayer
   - 
   - 
   - 

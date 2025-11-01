@@ -1,8 +1,11 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEditor.TerrainTools;
 using UnityEngine;
 using UnityEngine.UIElements;
+using Random = UnityEngine.Random;
+using EasyButtons;
 
 public class MapSpawner : MonoBehaviour
 {
@@ -15,6 +18,9 @@ public class MapSpawner : MonoBehaviour
     private List<Vector3> rockPositions = new List<Vector3>();
     private List<Vector3> treePositions = new List<Vector3>();
 
+    // Temporary list so I can quickly destroy shit and respawn
+    private List<GameObject> spawnedObjects = new List<GameObject>();
+
     // Basic variables
     public GameObject treePrefab, rockPrefab, groundPrefab, waterPrefab;
 
@@ -23,7 +29,18 @@ public class MapSpawner : MonoBehaviour
 
     public void Start()
     {
+        treeNoise.offset = new Vector2(Random.Range(0f, 9999f), Random.Range(0f, 9999f));
+        rockNoise.offset = new Vector2(Random.Range(0f, 9999f), Random.Range(0f, 9999f));
+
         GenerateMap();
+    }
+
+    public void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            ResetMap();
+        }
     }
 
     public void GenerateMap()
@@ -35,9 +52,9 @@ public class MapSpawner : MonoBehaviour
             {
                 // Makes it spawn in a grid
                 Vector3 basePosition = new Vector3(x * spacing, 0, z * spacing);
-                Instantiate(groundPrefab, basePosition, Quaternion.identity);
+                var gameObject2 = Instantiate(groundPrefab, basePosition, Quaternion.identity);
+                spawnedObjects.Add(gameObject2);
 
-                float rockValue = rockNoise.GetValue(x, z);
                 float treeValue = treeNoise.GetValue(x, z);
 
                 // Offset so rocks n trees spawn a bit different per tile
@@ -50,8 +67,10 @@ public class MapSpawner : MonoBehaviour
                 {
                     if (CanSpawn(treePositions, spawnPosition, 2.5f))
                     {
-                        Instantiate(treePrefab, spawnPosition + Vector3.up * 3f, Quaternion.identity);
+                        var gameObject = Instantiate(treePrefab, spawnPosition + Vector3.up * 3f, Quaternion.identity);
+
                         treePositions.Add(spawnPosition);
+                        spawnedObjects.Add(gameObject);
                     }
                 }
             }
@@ -67,7 +86,6 @@ public class MapSpawner : MonoBehaviour
                 Vector3 basePosition = new Vector3(x * spacing, 0, z * spacing);
 
                 float rockValue = rockNoise.GetValue(x, z);
-                float treeValue = treeNoise.GetValue(x, z);
 
                 // Offset so rocks n trees spawn a bit different per tile
                 float offsetX = Random.Range(-spacing / 2f + 0.3f, spacing / 2f - 0.3f);
@@ -79,17 +97,13 @@ public class MapSpawner : MonoBehaviour
                 {
                     if (CanSpawn(rockPositions, spawnPosition, 5f))
                     {
-                        Instantiate(rockPrefab, spawnPosition + Vector3.up * 2.5f, Quaternion.identity);
+                        var gameObject3 = Instantiate(rockPrefab, spawnPosition + Vector3.up * 2.5f, Quaternion.identity);
                         rockPositions.Add(spawnPosition);
+                        spawnedObjects.Add(gameObject3);
                     }
                 }
             }
         }
-    }
-
-    public void LoopFunction(int MapWidth, int MapDepth, GameObject groundPrefab, float spacing, Func<int, int, float> noiseFunc, float minNoise, float maxNoise, float density, List<Vector3> existingPositions, float minDistance, bool avoidTrees)
-    {
-
     }
 
     public bool NoiseRange(float value, float min, float max, float density)
@@ -116,5 +130,35 @@ public class MapSpawner : MonoBehaviour
                 return true;
         }
         return false;
+    }
+
+    public void DestroyMap()
+    {
+        foreach (GameObject prefabs in spawnedObjects.ToArray())
+        {
+            if (prefabs != null)
+            {
+                Destroy(prefabs);
+            }
+            spawnedObjects.Clear();
+            treePositions.Clear();
+            rockPositions.Clear();
+        }
+    }
+    [Button]
+    public void ResetMap()
+    {
+        if (Application.isPlaying)
+        {
+            DestroyMap();
+            RandomizeNoiseOffsets();
+            GenerateMap();
+        }
+    }
+
+    private void RandomizeNoiseOffsets()
+    {
+        treeNoise.offset = new Vector2(Random.Range(0f, 9999f), Random.Range(0f, 9999f));
+        rockNoise.offset = new Vector2(Random.Range(0f, 9999f), Random.Range(0f, 9999f));
     }
 }
