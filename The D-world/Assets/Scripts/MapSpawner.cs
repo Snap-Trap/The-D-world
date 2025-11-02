@@ -8,6 +8,7 @@ using Random = UnityEngine.Random;
 using EasyButtons;
 public class MapSpawner : MonoBehaviour
 {
+    public Terrain groundTerrain, waterTerrain;
     // Something class related
     public NoiseGenerator rockNoise;
     public NoiseGenerator treeNoise;
@@ -25,7 +26,7 @@ public class MapSpawner : MonoBehaviour
     public GameObject treePrefab, rockPrefab, groundMesh, waterPrefab;
 
     public int mapWidth, mapDepth, mapHeight;
-    public float spacing;
+    public float spacing, waterLevel;
 
     public void Start()
     {
@@ -56,7 +57,7 @@ public class MapSpawner : MonoBehaviour
     public void GenerateMap()
     {
         Terrain terrain = groundMesh.GetComponent<Terrain>();
-        TerrainData tData = terrain.terrainData;
+        TerrainData groundData = terrain.terrainData;
         // For loop that first spawns the ground, then spawns the trees
         for (int x = 0; x < mapWidth; x++)
         {
@@ -64,7 +65,7 @@ public class MapSpawner : MonoBehaviour
             {
                 float offsetX = Random.Range(-spacing / 2f + 0.3f, spacing / 2f - 0.3f);
                 float offsetZ = Random.Range(-spacing / 2f + 0.3f, spacing / 2f - 0.3f);
-                Vector3 spawnPosition = new Vector3(x * spacing + offsetX, 0, z * spacing + offsetZ);
+                Vector3 spawnPosition = new Vector3(x * spacing + offsetX, 3, z * spacing + offsetZ);
 
                 spawnPosition.x += offsetX;
                 spawnPosition.z += offsetZ;
@@ -94,7 +95,7 @@ public class MapSpawner : MonoBehaviour
             {
                 float offsetX = Random.Range(-spacing / 2f + 0.3f, spacing / 2f - 0.3f);
                 float offsetZ = Random.Range(-spacing / 2f + 0.3f, spacing / 2f - 0.3f);
-                Vector3 spawnPosition = new Vector3(x * spacing + offsetX, 0, z * spacing + offsetZ);
+                Vector3 spawnPosition = new Vector3(x * spacing + offsetX, -1.5f, z * spacing + offsetZ);
 
                 spawnPosition.x += offsetX;
                 spawnPosition.z += offsetZ;
@@ -188,35 +189,51 @@ public class MapSpawner : MonoBehaviour
     }
     private void SetupTerrain()
     {
+        // This is for the ground terrain
         // Make sure your groundMesh is actually a Terrain
-        Terrain terrain = groundMesh.GetComponent<Terrain>();
-        if (terrain == null)
+        if (groundTerrain == null || waterTerrain == null)
         {
-            terrain = groundMesh.AddComponent<Terrain>();
-            groundMesh.AddComponent<TerrainCollider>();
+            Debug.LogError("You haven't assigned the terrains in the inspector you dumb fuck");
+            return;
         }
 
-        TerrainData tData = new TerrainData();
-        tData.heightmapResolution = mapWidth + 1; // Must be one more than width
-        tData.size = new Vector3(mapWidth * spacing, mapHeight, mapDepth * spacing);
+        TerrainData groundData = new TerrainData();
+        groundData.heightmapResolution = mapWidth + 1; // Must be one more than width
+        groundData.size = new Vector3(mapWidth * spacing, mapHeight, mapDepth * spacing);
 
-        float[,] heights = new float[tData.heightmapResolution, tData.heightmapResolution];
+        float[,] groundHeights = new float[groundData.heightmapResolution, groundData.heightmapResolution];
 
-        for (int x = 0; x < tData.heightmapResolution; x++)
+        for (int x = 0; x < groundData.heightmapResolution; x++)
         {
-            for (int z = 0; z < tData.heightmapResolution; z++)
+            for (int z = 0; z < groundData.heightmapResolution; z++)
             {
-                float noiseValue = groundNoise.GetValue(x, z); // 0-1
-                heights[x, z] = Mathf.Clamp01(noiseValue);      // normalized height
+                float noiseValue = groundNoise.GetValue(x, z);
+                groundHeights[x, z] = Mathf.Clamp01(noiseValue);
             }
         }
 
-        tData.SetHeights(0, 0, heights);
-
-        terrain.terrainData = tData;
+        groundData.SetHeights(0, 0, groundHeights);
+        groundTerrain.terrainData = groundData;
 
         // Ensure the TerrainCollider uses this TerrainData
         TerrainCollider tCollider = groundMesh.GetComponent<TerrainCollider>();
-        tCollider.terrainData = tData;
+        tCollider.terrainData = groundData;
+
+        TerrainData waterData = new TerrainData();
+        waterData.heightmapResolution = mapWidth + 1; // Must be one more than width
+        waterData.size = new Vector3(mapWidth * spacing, mapHeight, mapDepth * spacing);
+
+        float[,] waterHeights = new float[waterData.heightmapResolution, waterData.heightmapResolution];
+
+        for (int x = 0; x < waterData.heightmapResolution; x++)
+        {
+            for (int z = 0; z < waterData.heightmapResolution; z++)
+            {
+                waterHeights[x, z] = waterLevel;
+            }
+        }
+
+        waterData.SetHeights(0, 0, waterHeights);
+        waterTerrain.terrainData = waterData;
     }
 }
