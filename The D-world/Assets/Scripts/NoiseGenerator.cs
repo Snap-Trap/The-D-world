@@ -21,6 +21,11 @@ public class NoiseGenerator
         float frequency = baseNoiseScale;
         float maxValue = 0f;
 
+        if (octaves > 20)
+        {
+            octaves = 20;
+        }
+
         for (int i = 0; i < octaves; i++)
         {
             float noiseValue = Mathf.PerlinNoise(x * frequency + offset.x, z * frequency + offset.z);

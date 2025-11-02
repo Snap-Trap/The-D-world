@@ -6,13 +6,13 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using Random = UnityEngine.Random;
 using EasyButtons;
-
 public class MapSpawner : MonoBehaviour
 {
     // Something class related
     public NoiseGenerator rockNoise;
     public NoiseGenerator treeNoise;
-    public float minRock, maxRock, densityRock, minTree, maxTree, densityTree;
+    public NoiseGenerator groundNoise;
+    public float minRock, maxRock, densityRock, minTree, maxTree, densityTree, minGround, maxGround;
 
     // List variables so that prefabs don't spawn inside each other
     private List<Vector3> rockPositions = new List<Vector3>();
@@ -22,16 +22,14 @@ public class MapSpawner : MonoBehaviour
     private List<GameObject> spawnedObjects = new List<GameObject>();
 
     // Basic variables
-    public GameObject treePrefab, rockPrefab, groundPrefab, waterPrefab;
+    public GameObject treePrefab, rockPrefab, groundMesh, waterPrefab;
 
-    public int mapWidth, mapDepth;
+    public int mapWidth, mapDepth, mapHeight;
     public float spacing;
 
     public void Start()
     {
-        treeNoise.offset = new Vector2(Random.Range(0f, 9999f), Random.Range(0f, 9999f));
-        rockNoise.offset = new Vector2(Random.Range(0f, 9999f), Random.Range(0f, 9999f));
-
+        RandomizeNoiseOffsets();
         GenerateMap();
     }
 
@@ -43,6 +41,16 @@ public class MapSpawner : MonoBehaviour
         }
     }
 
+    public void ResetMap()
+    {
+        if (Application.isPlaying)
+        {
+            DestroyMap();
+            RandomizeNoiseOffsets();
+            GenerateMap();
+        }
+    }
+
     public void GenerateMap()
     {
         // For loop that first spawns the ground, then spawns the trees
@@ -50,10 +58,7 @@ public class MapSpawner : MonoBehaviour
         {
             for (int z = 0; z < mapDepth; z++)
             {
-                // Makes it spawn in a grid
                 Vector3 basePosition = new Vector3(x * spacing, 0, z * spacing);
-                var gameObject2 = Instantiate(groundPrefab, basePosition, Quaternion.identity);
-                spawnedObjects.Add(gameObject2);
 
                 float treeValue = treeNoise.GetValue(x, z);
 
@@ -76,7 +81,7 @@ public class MapSpawner : MonoBehaviour
             }
         }
 
-        // Yes I copied this shit from a row above, no I do not instantiate the map
+        // Yes I copied this shit from a row above, cry about it
         // For loop that then only checks where the rocks are supposed
         for (int x = 0; x < mapWidth; x++)
         {
@@ -104,6 +109,30 @@ public class MapSpawner : MonoBehaviour
                 }
             }
         }
+
+        var groundMaterial = groundMesh.GetComponent<Renderer>().material;
+
+        Texture2D texture = new Texture2D(mapWidth, mapDepth);
+
+        for (int x = 0; x < mapWidth; x++)
+        {
+            for (int y = 0; y < mapDepth; y++)
+            {
+                float groundValue = groundNoise.GetValue(x, y);
+
+                // Color coding:
+                // Trees: green where value is between treeMin and treeMax
+                // Rocks: gray where value is between rockMin and rockMax
+                // Else: normal grayscale of noise
+                Color color = new Color(groundValue, 0, 0);
+                texture.SetPixel(x, y, color);
+            }
+        }
+
+        texture.Apply();
+        groundMaterial.SetTexture("_HeightMap", texture);
+        groundMesh.transform.position = new Vector3(mapWidth / 2 * spacing, 0, mapDepth / 2 * spacing);
+        groundMesh.transform.localScale = new Vector3(mapWidth / 2 * spacing, mapDepth / 2 * spacing, mapHeight);
     }
 
     public bool NoiseRange(float value, float min, float max, float density)
@@ -145,20 +174,11 @@ public class MapSpawner : MonoBehaviour
             rockPositions.Clear();
         }
     }
-    [Button]
-    public void ResetMap()
-    {
-        if (Application.isPlaying)
-        {
-            DestroyMap();
-            RandomizeNoiseOffsets();
-            GenerateMap();
-        }
-    }
 
     private void RandomizeNoiseOffsets()
     {
-        treeNoise.offset = new Vector2(Random.Range(0f, 9999f), Random.Range(0f, 9999f));
-        rockNoise.offset = new Vector2(Random.Range(0f, 9999f), Random.Range(0f, 9999f));
+        treeNoise.offset = new Vector3(Random.Range(0f, 9999f), 0, Random.Range(0f, 9999f));
+        rockNoise.offset = new Vector3(Random.Range(0f, 9999f), 0, Random.Range(0f, 9999f));
+        groundNoise.offset = new Vector3(Random.Range(0f, 9999f), 0, Random.Range(0f, 9999f));
     }
 }
